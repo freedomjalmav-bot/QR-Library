@@ -9,117 +9,241 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+        :root {
+            --bg-dark: #050811;
+        }
+
         body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: #090e1a; 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg-dark); 
             overflow: hidden;
             user-select: none;
             -webkit-user-select: none;
-        } 
-        #reader { width: 100% !important; height: 100% !important; border: none !important; }
+        }
+
+        .font-mono-clock {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Konfigurasi Video Scanner */
+        #reader { 
+            width: 100% !important; 
+            height: 100% !important; 
+            border: none !important; 
+        }
         #reader video { 
             width: 100% !important; 
             height: 100% !important; 
             object-fit: cover !important; 
-            border-radius: 1rem !important;
+            border-radius: 1.25rem !important;
+            transition: transform 0.3s ease;
+        }
+        .mirror-video #reader video {
             transform: scaleX(-1);
         }
         #reader__scan_region { width: 100% !important; height: 100% !important; }
         #reader__dashboard { display: none !important; }
 
+        /* Animasi Laser Scanner */
+        @keyframes scanLaser {
+            0% { top: 8%; opacity: 0; }
+            15% { opacity: 1; }
+            85% { opacity: 1; }
+            100% { top: 92%; opacity: 0; }
+        }
+        .laser-line {
+            position: absolute;
+            left: 8%;
+            right: 8%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #6366f1, #38bdf8, #6366f1, transparent);
+            box-shadow: 0 0 12px 2px rgba(56, 189, 248, 0.7);
+            border-radius: 999px;
+            animation: scanLaser 2.4s ease-in-out infinite;
+        }
+
+        /* Efek Glassmorphism */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.55);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
+
+        /* Layar Penuh */
         :fullscreen main, :-webkit-full-screen main {
             max-height: 100vh !important;
             height: 100vh !important;
+            border-radius: 0 !important;
+            border: none !important;
+            max-width: 100% !important;
+        }
+        @media (min-width: 640px) {
+            :fullscreen main, :-webkit-full-screen main {
+                max-width: 480px !important;
+                height: 95vh !important;
+                border-radius: 2.5rem !important;
+                border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            }
         }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen text-slate-200 p-0 sm:p-4">
+<body class="flex items-center justify-center min-h-screen text-slate-100 p-0 sm:p-4 relative">
+
+    <!-- Dekorasi Ambient Glow Latar Belakang -->
+    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div class="absolute -top-32 -left-32 w-96 h-96 bg-indigo-600/20 rounded-full blur-[120px]"></div>
+        <div class="absolute top-1/2 -right-32 w-96 h-96 bg-cyan-500/15 rounded-full blur-[120px]"></div>
+        <div class="absolute -bottom-32 left-1/3 w-96 h-96 bg-purple-600/15 rounded-full blur-[120px]"></div>
+    </div>
 
     <!-- OVERLAY UNLOCK AUDIO & FULLSCREEN -->
-    <div id="audioUnlockOverlay" onclick="aktifkanKioskTablet()" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-opacity duration-300">
-        <div class="w-20 h-20 rounded-3xl bg-indigo-600 text-white flex items-center justify-center shadow-2xl shadow-indigo-500/40 mb-5 animate-bounce">
-            <i class="fa-solid fa-expand text-3xl"></i>
+    <div id="audioUnlockOverlay" onclick="aktifkanKioskTablet()" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-all duration-300">
+        <div class="relative mb-7">
+            <div class="absolute inset-0 rounded-3xl bg-indigo-500 blur-xl opacity-40 animate-pulse"></div>
+            <div class="relative w-24 h-24 rounded-3xl bg-gradient-to-br from-indigo-500 to-cyan-500 text-white flex items-center justify-center shadow-2xl border border-white/20">
+                <i class="fa-solid fa-book-open-reader text-4xl"></i>
+            </div>
         </div>
-        <h2 class="text-2xl font-extrabold text-white mb-2">Mode Kiosk Perpustakaan</h2>
-        <p class="text-slate-400 text-sm max-w-xs mb-6">Sentuh layar untuk mengaktifkan suara sambutan, kamera pemindai, dan mode layar penuh.</p>
-        <button class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold px-6 py-3.5 rounded-2xl shadow-lg shadow-indigo-600/30 flex items-center gap-2.5 transition">
-            <i class="fa-solid fa-volume-high"></i> Aktifkan Suara & Layar Penuh
+        <span class="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-semibold uppercase tracking-widest mb-3">
+            Smart Kiosk System
+        </span>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white mb-2 tracking-tight">Presensi Perpustakaan</h2>
+        <p class="text-slate-400 text-sm max-w-xs mb-8 leading-relaxed">
+            Sentuh di mana saja untuk mengaktifkan suara sambutan, pemindai kamera, dan mode layar penuh.
+        </p>
+        <button class="bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 active:scale-95 text-white font-bold px-7 py-4 rounded-2xl shadow-xl shadow-indigo-600/30 flex items-center gap-3 transition-all border border-white/15">
+            <i class="fa-solid fa-power-off"></i>
+            <span>Mulai Mode Kiosk</span>
         </button>
     </div>
 
     <!-- Input RFID / Barcode Scanner Fisik -->
     <input type="text" id="rfidFocusInput" inputmode="none" autocomplete="off" style="position: absolute; opacity: 0; pointer-events: none;">
 
-    <!-- Frame Aplikasi -->
-    <main class="w-full max-w-[440px] h-screen sm:h-[92vh] sm:max-h-[900px] bg-slate-900 sm:rounded-[2.5rem] sm:border-[6px] sm:border-slate-800 shadow-2xl flex flex-col justify-between p-5 relative overflow-hidden">
+    <!-- Frame Utama Aplikasi -->
+    <main class="relative z-10 w-full max-w-[460px] h-screen sm:h-[93vh] sm:max-h-[900px] glass-panel sm:rounded-[2.5rem] shadow-[0_25px_70px_-15px_rgba(0,0,0,0.8)] flex flex-col justify-between p-5 sm:p-6 overflow-hidden">
         
         <!-- Header -->
-        <header class="text-center mt-1">
-            <div class="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-2">
-                <i class="fa-solid fa-book-open-reader text-xl"></i>
+        <header class="flex flex-col gap-3">
+            <!-- Baris Identitas Sekolah -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 border border-indigo-400/30 text-indigo-400 flex items-center justify-center shadow-inner shrink-0">
+                        <i class="fa-solid fa-book-open-reader text-xl"></i>
+                    </div>
+                    <div class="text-left">
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-lg font-extrabold text-white tracking-tight leading-none">Perpustakaan</h1>
+                            <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 rounded-md border border-indigo-500/30">Digital</span>
+                        </div>
+                        <p class="text-slate-400 text-xs font-medium mt-1">SMPN 1 Satui • Presensi Pengunjung</p>
+                    </div>
+                </div>
+
+                <!-- Tombol Aksi Cepat -->
+                <div class="flex items-center gap-1.5">
+                    <button onclick="tesSuaraManual()" title="Tes Suara Sambutan" class="w-9 h-9 rounded-xl glass-card hover:bg-slate-700/60 active:scale-95 text-emerald-400 flex items-center justify-center transition">
+                        <i id="speakerIcon" class="fa-solid fa-volume-high text-xs"></i>
+                    </button>
+                    <button onclick="gantiKamera()" title="Putar Kamera" class="w-9 h-9 rounded-xl glass-card hover:bg-slate-700/60 active:scale-95 text-cyan-400 flex items-center justify-center transition">
+                        <i class="fa-solid fa-camera-rotate text-xs"></i>
+                    </button>
+                    <button onclick="toggleFullscreenManual()" title="Layar Penuh" class="w-9 h-9 rounded-xl glass-card hover:bg-slate-700/60 active:scale-95 text-indigo-400 flex items-center justify-center transition">
+                        <i id="fullscreenIcon" class="fa-solid fa-expand text-xs"></i>
+                    </button>
+                </div>
             </div>
-            <h1 class="text-2xl font-extrabold text-white tracking-tight">Perpustakaan</h1>
-            <p class="text-slate-400 text-xs mt-0.5">SMPN 1 Satui • Pindai Kartu Anggota</p>
-            
-            <div class="flex items-center justify-center gap-2 mt-3">
-                <div id="clockWidget" class="text-xl font-bold text-indigo-400 bg-slate-800/80 px-4 py-1.5 rounded-xl border border-slate-700/60 shadow-inner tracking-wider">
+
+            <!-- Baris Tanggal & Jam Digital -->
+            <div class="glass-card rounded-2xl px-4 py-2.5 flex items-center justify-between">
+                <div class="flex items-center gap-2 text-slate-300 text-xs font-medium">
+                    <i class="fa-regular fa-calendar text-indigo-400"></i>
+                    <span id="dateWidget">Memuat tanggal...</span>
+                </div>
+                <div id="clockWidget" class="font-mono-clock text-sm font-bold text-cyan-400 tracking-wider bg-slate-900/70 px-3 py-1 rounded-lg border border-white/5">
                     --:--:--
                 </div>
-                <button onclick="tesSuaraManual()" title="Tes Suara" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 flex items-center justify-center border border-slate-700 transition">
-                    <i id="speakerIcon" class="fa-solid fa-volume-high text-sm"></i>
-                </button>
-                <button onclick="gantiKamera()" title="Ganti Kamera" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center border border-slate-700 transition">
-                    <i class="fa-solid fa-camera-rotate text-sm"></i>
-                </button>
-                <button onclick="toggleFullscreenManual()" title="Layar Penuh" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-400 flex items-center justify-center border border-slate-700 transition">
-                    <i id="fullscreenIcon" class="fa-solid fa-expand text-sm"></i>
-                </button>
             </div>
         </header>
 
-        <!-- Status Card & Kamera -->
-        <section class="my-auto py-2 w-full flex flex-col gap-3">
-            <div id="statusCard" class="bg-slate-800 rounded-2xl p-3.5 border border-slate-700 transition-all duration-200 flex items-center gap-3">
-                <div id="statusIconBox" class="w-11 h-11 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
+        <!-- Area Tengah: Status Card & Viewfinder Kamera -->
+        <section class="my-auto py-2 w-full flex flex-col gap-3.5">
+            
+            <!-- Kartu Status Dinamis -->
+            <div id="statusCard" class="glass-card rounded-2xl p-4 transition-all duration-300 flex items-center gap-3.5 shadow-lg">
+                <div id="statusIconBox" class="w-12 h-12 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0 transition-all duration-300">
                     <i id="statusIcon" class="fa-solid fa-qrcode text-xl"></i>
                 </div>
-                <div class="overflow-hidden">
-                    <span id="statusBadge" class="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 mb-0.5">
-                        Siap Memindai
-                    </span>
-                    <h2 id="statusTitle" class="text-sm font-bold text-white truncate">
-                        Arahkan Kartu QR
+                <div class="overflow-hidden flex-1">
+                    <div class="flex items-center gap-2 mb-0.5">
+                        <span id="statusBadge" class="inline-block text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            Siap Memindai
+                        </span>
+                    </div>
+                    <h2 id="statusTitle" class="text-base font-bold text-white truncate">
+                        Arahkan Kartu Anggota
                     </h2>
-                    <p id="statusDesc" class="text-xs text-slate-400 truncate">
-                        Tunggu hingga kartu terbaca
+                    <p id="statusDesc" class="text-xs text-slate-400 truncate mt-0.5">
+                        Posisikan kode QR di dalam area pindai atau tempel kartu
                     </p>
                 </div>
             </div>
 
-            <div class="bg-slate-800 p-2.5 rounded-3xl shadow-xl w-full border border-slate-700 relative overflow-hidden h-[340px] flex items-center justify-center">
-                <div class="bg-black rounded-2xl overflow-hidden relative border border-slate-700/80 w-full h-full flex items-center justify-center">
+            <!-- Kotak Kamera dengan HUD Scanner -->
+            <div id="cameraWrapper" class="mirror-video glass-card p-2.5 rounded-3xl shadow-2xl w-full relative overflow-hidden h-[320px] sm:h-[340px] flex items-center justify-center">
+                <div class="bg-slate-950 rounded-2xl overflow-hidden relative w-full h-full flex items-center justify-center border border-white/5">
+                    
+                    <!-- Elemen Kamera HTML5-QRCode -->
                     <div id="reader" class="w-full h-full"></div>
                     
-                    <div class="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-                        <div id="scanFrame" class="w-48 h-48 border-2 border-indigo-500/40 rounded-3xl relative transition-all duration-200">
-                            <div class="absolute -top-1 -left-1 w-7 h-7 border-t-4 border-l-4 border-indigo-400 rounded-tl-2xl"></div>
-                            <div class="absolute -top-1 -right-1 w-7 h-7 border-t-4 border-r-4 border-indigo-400 rounded-tr-2xl"></div>
-                            <div class="absolute -bottom-1 -left-1 w-7 h-7 border-b-4 border-l-4 border-indigo-400 rounded-bl-2xl"></div>
-                            <div class="absolute -bottom-1 -right-1 w-7 h-7 border-b-4 border-r-4 border-indigo-400 rounded-br-2xl"></div>
+                    <!-- Overlay HUD Pemindai -->
+                    <div class="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-10">
+                        <div id="scanFrame" class="w-52 h-52 rounded-3xl relative transition-all duration-300">
+                            <!-- Sudut-sudut Keren (HUD Brackets) -->
+                            <div id="cornerTL" class="absolute -top-0.5 -left-0.5 w-8 h-8 border-t-4 border-l-4 border-cyan-400 rounded-tl-2xl shadow-[-2px_-2px_10px_rgba(34,211,238,0.4)] transition-colors duration-300"></div>
+                            <div id="cornerTR" class="absolute -top-0.5 -right-0.5 w-8 h-8 border-t-4 border-r-4 border-cyan-400 rounded-tr-2xl shadow-[2px_-2px_10px_rgba(34,211,238,0.4)] transition-colors duration-300"></div>
+                            <div id="cornerBL" class="absolute -bottom-0.5 -left-0.5 w-8 h-8 border-b-4 border-l-4 border-cyan-400 rounded-bl-2xl shadow-[-2px_2px_10px_rgba(34,211,238,0.4)] transition-colors duration-300"></div>
+                            <div id="cornerBR" class="absolute -bottom-0.5 -right-0.5 w-8 h-8 border-b-4 border-r-4 border-cyan-400 rounded-br-2xl shadow-[2px_2px_10px_rgba(34,211,238,0.4)] transition-colors duration-300"></div>
+                            
+                            <!-- Garis Laser Animasi -->
+                            <div id="laserLine" class="laser-line"></div>
+                        </div>
+
+                        <!-- Badge Info di Bawah Frame -->
+                        <div class="mt-4 px-3 py-1 rounded-full bg-slate-950/75 backdrop-blur-md border border-white/10 text-[11px] text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-camera text-cyan-400 text-[10px]"></i>
+                            <span>Pemindai QR & RFID Aktif</span>
                         </div>
                     </div>
+
                 </div>
             </div>
         </section>
         
         <!-- Footer -->
-        <footer class="text-center pb-1 flex items-center justify-between text-xs text-slate-400 px-1">
-            <span class="flex items-center gap-1.5">
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                Scanner Aktif
-            </span>
-            <span id="counterText" class="font-bold text-slate-300">0 Hadir</span>
+        <footer class="glass-card rounded-2xl px-4 py-2.5 flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2 text-slate-300 font-medium">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <span>Sistem Online</span>
+            </div>
+
+            <div class="flex items-center gap-2 bg-indigo-500/15 border border-indigo-500/30 px-3 py-1 rounded-xl">
+                <i class="fa-solid fa-users text-indigo-400 text-[11px]"></i>
+                <span id="counterText" class="font-bold text-indigo-200">0 Hadir</span>
+            </div>
         </footer>
 
     </main>
@@ -129,8 +253,20 @@
 
         localStorage.clear();
 
+        // Update Jam & Tanggal Real-time
         function updateClock() {
-            document.getElementById('clockWidget').innerText = new Date().toLocaleTimeString('id-ID');
+            const now = new Date();
+            document.getElementById('clockWidget').innerText = now.toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('dateWidget').innerText = now.toLocaleDateString('id-ID', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
         }
         setInterval(updateClock, 1000);
         updateClock();
@@ -162,8 +298,8 @@
             const icon = document.getElementById('fullscreenIcon');
             if (!icon) return;
             icon.className = (document.fullscreenElement || document.webkitFullscreenElement) 
-                ? "fa-solid fa-compress text-sm" 
-                : "fa-solid fa-expand text-sm";
+                ? "fa-solid fa-compress text-xs" 
+                : "fa-solid fa-expand text-xs";
         }
         document.addEventListener('fullscreenchange', updateFullscreenIcon);
         document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
@@ -240,7 +376,6 @@
             return nama.replace(/S\.Pd|M\.Pd|S\.Kom|Gr\.|Drs\.|Dra\.|S\.Ag|M\.M|S\.Si|H\.|Hj\./gi, '').replace(/[.,]/g, ' ').trim();
         }
 
-        // Ambil nama pendek (kata pertama dari nama)
         function ambilNamaPendek(nama) {
             if (!nama) return "";
             const namaBersih = bersihkanGelar(nama);
@@ -286,6 +421,9 @@
             } catch (e) {}
         }
 
+        // =========================================================================
+        // TAMPILAN STATUS DINAMIS
+        // =========================================================================
         const statusCard = document.getElementById('statusCard');
         const statusIconBox = document.getElementById('statusIconBox');
         const statusIcon = document.getElementById('statusIcon');
@@ -293,30 +431,49 @@
         const statusTitle = document.getElementById('statusTitle');
         const statusDesc = document.getElementById('statusDesc');
         const scanFrame = document.getElementById('scanFrame');
+        const laserLine = document.getElementById('laserLine');
+        const corners = [
+            document.getElementById('cornerTL'),
+            document.getElementById('cornerTR'),
+            document.getElementById('cornerBL'),
+            document.getElementById('cornerBR')
+        ];
+
         let resetTimer = null;
         let hadirCount = 0;
 
+        function ubahWarnaSudut(warnaClass) {
+            corners.forEach(c => {
+                c.classList.remove('border-cyan-400', 'border-emerald-400', 'border-purple-400', 'border-rose-500');
+                c.classList.add(warnaClass);
+            });
+        }
+
         function tampilkanStatus(tipe, badge, judul, subjudul) {
             clearTimeout(resetTimer);
+            laserLine.style.display = 'none';
 
             if (tipe === 'success') {
-                statusCard.className = "bg-emerald-950/80 rounded-2xl p-3.5 border-2 border-emerald-500 shadow-lg transition-all duration-200 flex items-center gap-3";
-                statusIconBox.className = "w-11 h-11 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0";
+                statusCard.className = "bg-emerald-950/80 backdrop-blur-md rounded-2xl p-4 border-2 border-emerald-500/80 shadow-[0_0_25px_rgba(16,185,129,0.25)] transition-all duration-300 flex items-center gap-3.5";
+                statusIconBox.className = "w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-emerald-500/30";
                 statusIcon.className = "fa-solid fa-check text-xl";
-                statusBadge.className = "inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-900 text-emerald-200 mb-0.5";
-                scanFrame.className = "w-48 h-48 border-4 border-emerald-400 bg-emerald-400/10 rounded-3xl relative transition-all duration-150 scale-105";
+                statusBadge.className = "inline-block text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/30";
+                scanFrame.className = "w-52 h-52 bg-emerald-400/10 rounded-3xl relative transition-all duration-200 scale-105";
+                ubahWarnaSudut('border-emerald-400');
             } else if (tipe === 'guru') {
-                statusCard.className = "bg-purple-950/80 rounded-2xl p-3.5 border-2 border-purple-500 shadow-lg transition-all duration-200 flex items-center gap-3";
-                statusIconBox.className = "w-11 h-11 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0";
+                statusCard.className = "bg-purple-950/80 backdrop-blur-md rounded-2xl p-4 border-2 border-purple-500/80 shadow-[0_0_25px_rgba(168,85,247,0.25)] transition-all duration-300 flex items-center gap-3.5";
+                statusIconBox.className = "w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-purple-600/30";
                 statusIcon.className = "fa-solid fa-chalkboard-user text-xl";
-                statusBadge.className = "inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-900 text-purple-200 mb-0.5";
-                scanFrame.className = "w-48 h-48 border-4 border-purple-400 bg-purple-400/10 rounded-3xl relative transition-all duration-150 scale-105";
+                statusBadge.className = "inline-block text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/30";
+                scanFrame.className = "w-52 h-52 bg-purple-400/10 rounded-3xl relative transition-all duration-200 scale-105";
+                ubahWarnaSudut('border-purple-400');
             } else if (tipe === 'error') {
-                statusCard.className = "bg-rose-950/80 rounded-2xl p-3.5 border-2 border-rose-500 shadow-lg transition-all duration-200 flex items-center gap-3";
-                statusIconBox.className = "w-11 h-11 rounded-xl bg-rose-500 text-white flex items-center justify-center shrink-0";
+                statusCard.className = "bg-rose-950/80 backdrop-blur-md rounded-2xl p-4 border-2 border-rose-500/80 shadow-[0_0_25px_rgba(244,63,94,0.25)] transition-all duration-300 flex items-center gap-3.5";
+                statusIconBox.className = "w-12 h-12 rounded-2xl bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-rose-500/30";
                 statusIcon.className = "fa-solid fa-xmark text-xl";
-                statusBadge.className = "inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-900 text-rose-200 mb-0.5";
-                scanFrame.className = "w-48 h-48 border-4 border-rose-500 bg-rose-500/10 rounded-3xl relative transition-all duration-150";
+                statusBadge.className = "inline-block text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-200 border border-rose-400/30";
+                scanFrame.className = "w-52 h-52 bg-rose-500/10 rounded-3xl relative transition-all duration-200";
+                ubahWarnaSudut('border-rose-500');
             }
 
             statusBadge.innerText = badge;
@@ -324,15 +481,17 @@
             statusDesc.innerText = subjudul;
 
             resetTimer = setTimeout(() => {
-                statusCard.className = "bg-slate-800 rounded-2xl p-3.5 border border-slate-700 transition-all duration-200 flex items-center gap-3";
-                statusIconBox.className = "w-11 h-11 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0";
+                statusCard.className = "glass-card rounded-2xl p-4 transition-all duration-300 flex items-center gap-3.5 shadow-lg";
+                statusIconBox.className = "w-12 h-12 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0 transition-all duration-300";
                 statusIcon.className = "fa-solid fa-qrcode text-xl";
-                statusBadge.className = "inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 mb-0.5";
+                statusBadge.className = "inline-block text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30";
                 statusBadge.innerText = "Siap Memindai";
-                statusTitle.innerText = "Arahkan Kartu QR";
-                statusDesc.innerText = "Tunggu hingga kartu terbaca";
-                scanFrame.className = "w-48 h-48 border-2 border-indigo-500/40 rounded-3xl relative transition-all duration-200";
-            }, 2500);
+                statusTitle.innerText = "Arahkan Kartu Anggota";
+                statusDesc.innerText = "Posisikan kode QR di dalam area pindai atau tempel kartu";
+                scanFrame.className = "w-52 h-52 rounded-3xl relative transition-all duration-300";
+                ubahWarnaSudut('border-cyan-400');
+                laserLine.style.display = 'block';
+            }, 2600);
         }
 
         let lastScannedCode = "";
@@ -348,16 +507,15 @@
             const labelID = isGuru ? 'NIP' : 'NIS';
             const subJudul = isGuru 
                 ? `NIP: ${identifierID} • Dewan Guru` 
-                : (identifierID ? `${labelID}: ${identifierID} ${payload.kelas ? '• ' + payload.kelas : ''}` : 'Memverifikasi kartu...');
+                : (identifierID ? `${labelID}: ${identifierID} ${payload.kelas ? '• Kelas ' + payload.kelas : ''}` : 'Memverifikasi kartu...');
 
             tampilkanStatus(
                 isGuru ? 'guru' : 'success', 
-                isGuru ? 'Presensi Guru' : 'Berhasil', 
+                isGuru ? 'Presensi Guru' : 'Presensi Berhasil', 
                 namaTampilan || 'Memproses...', 
                 subJudul
             );
 
-            // Pengucapan kalimat sambutan dengan nama pendek
             if (namaTampilan) {
                 const namaPendek = ambilNamaPendek(namaTampilan);
                 const sapaan = isGuru ? `Bapak Ibu ${namaPendek}` : namaPendek;
@@ -375,7 +533,6 @@
             .then(res => res.json())
             .then(res => {
                 if (res.status === 'success') {
-                    // Jika data diperoleh via server (misal scan kartu RFID)
                     if (!namaTampilan && res.nama) {
                         const tipeRes = (res.tipe || '').toLowerCase() === 'guru';
                         const namaPendekServer = ambilNamaPendek(res.nama);
@@ -393,7 +550,7 @@
                     const pesanServer = (res.message || "").toLowerCase();
                     playBeep(true);
                     if (pesanServer.includes('tidak terdaftar') || pesanServer.includes('tidak ditemukan') || pesanServer.includes('tidak ada') || res.status === 'not_found') {
-                        tampilkanStatus('error', 'Tidak Terdaftar', namaTampilan || 'QR Tidak Dikenal', res.message || 'Data tidak ditemukan');
+                        tampilkanStatus('error', 'Tidak Terdaftar', namaTampilan || 'Kartu Tidak Dikenal', res.message || 'Data anggota tidak ditemukan');
                         ucapkanSuara("", "Mohon Maaf, kartu tidak terdaftar");
                     } else {
                         tampilkanStatus('error', 'Sudah Berkunjung', namaTampilan || 'Perhatian', res.message || 'Sudah melakukan presensi hari ini');
@@ -409,7 +566,7 @@
         }
 
         // =========================================================================
-        // DETEKSI SCAN QR
+        // DETEKSI SCAN QR & INPUT FISIK
         // =========================================================================
         function tangkapDataScan(decodedText) {
             const now = Date.now();
@@ -477,7 +634,7 @@
                 prosesAbsen(payloadAbsen, namaTampil, idTampil);
             } else {
                 playBeep(true);
-                tampilkanStatus('error', 'Format Salah', 'QR Tidak Dikenali', 'Gunakan Kartu Anggota resmi');
+                tampilkanStatus('error', 'Format Salah', 'QR Tidak Dikenali', 'Gunakan Kartu Anggota Perpustakaan resmi');
                 ucapkanSuara("", "Mohon Maaf, format kartu tidak dikenali");
             }
         }
@@ -497,9 +654,19 @@
         });
 
         const html5QrCode = new Html5Qrcode("reader");
+        const cameraWrapper = document.getElementById("cameraWrapper");
         let currentFacingMode = "user";
 
+        function sesuaikanMirrorKamera(mode) {
+            if (mode === "user") {
+                cameraWrapper.classList.add("mirror-video");
+            } else {
+                cameraWrapper.classList.remove("mirror-video");
+            }
+        }
+
         function mulaiKamera(facingMode) {
+            sesuaikanMirrorKamera(facingMode);
             const config = { 
                 fps: 30, 
                 qrbox: function(w, h) { 
